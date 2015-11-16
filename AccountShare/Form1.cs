@@ -24,6 +24,7 @@ namespace AccountShare
         static string ApiVersion;
         public string AccountID;
         public string newOwnerID;
+        public string accountName;
        
         public Form1()
         {
@@ -47,6 +48,7 @@ namespace AccountShare
 
         private async void button4_Click(object sender, EventArgs e)
         {
+            
             //get the account number from the account number input box
             string accountId = AccountIdInput.Text;
             //check if its not empty
@@ -60,29 +62,41 @@ namespace AccountShare
             //queryfor the account in salesforce
             string query = String.Format(@"Select Name,OwnerId , Type,SAP_Account_Number__c FROM Account WHERE Id = '{0}'",
                                                accountId);
+          
 
-            var results = await client.QueryAsync<Account>(query);
-            //if the results is empty return with message
-            if (results.TotalSize == 0)
+            try
             {
-                userMessage.Text = "Account number does not exist in the Salesforce!";
+                var results = await client.QueryAsync<Account>(query);
+                //if the results is empty return with message
+                if (results.TotalSize == 0)
+                {
+                    userMessage.Text = "Account number does not exist in the Salesforce!";
+                    return;
+                }
+
+
+
+
+                //query for the username
+                string userNameQuery = String.Format(@"Select Username FROM User WHERE Id = '{0}' ",
+                                      results.Records[0].OwnerId);
+
+                var userNameQueryResults = await client.QueryAsync<User>(userNameQuery);
+
+                //get the results Account Name, SAP ID, and Owner
+                AccountName.Text = results.Records[0].Name;
+                SapId.Text = results.Records[0].SAP_Account_Number__c;
+                Owner.Text = userNameQueryResults.Records[0].UserName;
+                AccountID = accountId;
+                accountName = results.Records[0].Name;
+                
+            }
+            catch(ForceException)
+            {
+                userMessage.Text = "Invalid User Id";
                 return;
             }
-
-          
             
-
-            //query for the username
-            string userNameQuery = String.Format(@"Select Username FROM User WHERE Id = '{0}' ",
-                                  results.Records[0].OwnerId);
-  
-            var userNameQueryResults = await client.QueryAsync<User>(userNameQuery);
-
-            //get the results Account Name, SAP ID, and Owner
-            AccountName.Text = results.Records[0].Name ;
-            SapId.Text = results.Records[0].SAP_Account_Number__c;
-            Owner.Text = userNameQueryResults.Records[0].UserName;
-            AccountID = accountId;
        
            
 
@@ -102,7 +116,7 @@ namespace AccountShare
             userMessage.Text = "Looking up the new user";
             var client = new ForceClient(instanceUrl, AccessToken, ApiVersion);
             //query the user table and make user the user exist
-            string userQuery = String.Format(@"Select Username, Title, Email FROM User WHERE Id = '{0}' ",
+            string userQuery = String.Format(@"Select Username, IsActive, Email FROM User WHERE Id = '{0}' ",
                                  newUserId);
 
             var results = await client.QueryAsync<User>(userQuery);
@@ -116,8 +130,9 @@ namespace AccountShare
             //set the username, email and title label
             userNameLabel.Text = results.Records[0].UserName;
             userEmailLabel.Text = results.Records[0].Email;
-            userTitleLabel.Text = results.Records[0].Title;
+            userActiveLabel.Text = results.Records[0].IsActive.ToString();
             newOwnerID = newUserId;
+
   
         }
 
@@ -143,7 +158,7 @@ namespace AccountShare
                 return;
             }
 
-            //update the owne 
+            //update the owner
             userMessage.Text = "Updating Owner!";
             var success = await client.UpdateAsync("Account", AccountID, new { OwnerId = newOwnerID});
             //check for susscess
@@ -153,14 +168,18 @@ namespace AccountShare
                 return;
             }
             
+            //message to the user 
             userMessage.Text = "Successfully updated record owner";
+            
+            //write to the file account id - account name - owner - new owner - new owner id - records before 
+            writeToFile(AccountID, accountName, newOwnerID);
            
             //create account share objects from all of the ones we have saved in memory 
             userMessage.Text = "Transferring Rercords.";
             foreach (AccountShare share in results.Records)
             {
 
-                share.print();
+               // share.print();
                 var newShare = new AccountShare { 
                 AccountId = share.AccountId,
                 UserOrGroupId = share.UserOrGroupId,
@@ -171,11 +190,26 @@ namespace AccountShare
                 RowCause = share.RowCause,
                // IsDeleted = share.IsDeleted
                 };
-                newShare.print();
+                writeToFile(share);
+                //newShare.print();
                 await client.CreateAsync(AccountShare.SObjectTypeName, newShare);
                
             }
             userMessage.Text = "Transferring Finished.";
+        }
+
+        //write the account share information to a file on the user desktop
+        //TODO
+        private object writeToFile(AccountShare share)
+        {
+            throw new NotImplementedException();
+        }
+
+        //write the account and user information to a file 
+        //TODO 
+        private void writeToFile(string AccountID, string accountName, string newOwnerID)
+        {
+            throw new NotImplementedException();
         }
 
 
@@ -226,7 +260,7 @@ namespace AccountShare
         {
             public const String SObjectTypeName = "User";
             public String UserName { get; set; }
-            public String Title { get; set; }
+            public Boolean IsActive  { get; set; }
             public String Email { get; set; }
 
         }
