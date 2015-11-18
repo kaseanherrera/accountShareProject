@@ -11,6 +11,7 @@ using System.Configuration;
 using Salesforce.Common;
 using Salesforce.Force;
 using System.Dynamic;
+using System.IO;
 
 
 namespace AccountShare
@@ -44,7 +45,6 @@ namespace AccountShare
         {
 
         }
-
 
         private async void button4_Click(object sender, EventArgs e)
         {
@@ -102,7 +102,6 @@ namespace AccountShare
 
         }
      
-
         private async void button5_Click(object sender, System.EventArgs e)
         {
            //get the new user ID from the input box 
@@ -136,8 +135,6 @@ namespace AccountShare
   
         }
 
-
-
         private async void button3_Click(object sender, EventArgs e)
         {
             //create a client 
@@ -146,8 +143,8 @@ namespace AccountShare
             string query = String.Format(@"Select Id, AccountId, UserOrGroupId, AccountAccessLevel, 
                                 OpportunityAccessLevel, CaseAccessLevel, ContactAccessLevel, RowCause, 
                                 LastModifiedDate, LastModifiedById, IsDeleted FROM AccountShare 
-                            WHERE  RowCause = 'Manual' 
-                            AND AccountId = '{0}'",
+                            WHERE  AccountId = '{0}' 
+                            AND  RowCause = 'Manual'",
                             AccountID);
 
             var results = await client.QueryAsync<AccountShare>(query);
@@ -172,7 +169,7 @@ namespace AccountShare
             userMessage.Text = "Successfully updated record owner";
             
             //write to the file account id - account name - owner - new owner - new owner id - records before 
-            writeToFile(AccountID, accountName, newOwnerID);
+           // writeToFile(AccountID, accountName, newOwnerID);
            
             //create account share objects from all of the ones we have saved in memory 
             userMessage.Text = "Transferring Rercords.";
@@ -200,9 +197,38 @@ namespace AccountShare
 
         //write the account share information to a file on the user desktop
         //TODO
-        private object writeToFile(AccountShare share)
+        private void writeToFile(AccountShare share)
         {
-            throw new NotImplementedException();
+            //path to the user desktop 
+            string path = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+            //add the file name and the correct extension 
+            path = path + @"\AccountShareLog.txt";
+
+            using (StreamWriter sw = File.AppendText(path))
+            {
+                string shareString = string.Format(
+               @"ID: {0}
+                Account ID: {1}
+                User or group id: {2}
+                Account accessLevel: {3}
+                Opportunity access level: {4}
+                Case  access level: {5}
+                Contact access level: {6}
+                Row Cause{7}
+
+                ", 
+                                 share.Id,
+                                 share.AccountId,
+                                 share.UserOrGroupId,
+                                 share.AccountAccessLevel,
+                                 share.OpportunityAccessLevel,
+                                 share.CaseAccessLevel,
+                                 share.ContactAccessLevel,
+                                 share.RowCause);
+               //wirte the string to the file 
+                sw.WriteLine(shareString); 
+                
+            }  
         }
 
         //write the account and user information to a file 
@@ -211,7 +237,6 @@ namespace AccountShare
         {
             throw new NotImplementedException();
         }
-
 
         public class AccountShare
         {
@@ -223,28 +248,8 @@ namespace AccountShare
             public String OpportunityAccessLevel { get; set; }
             public String CaseAccessLevel { get; set; }
             public String ContactAccessLevel { get; set; }
-            public String RowCause { get; set; }
-          //  public String LastModifiedDate { get; set; }
-          //  public String LastModifiedById { get; set; }
-           // public String IsDeleted { get; set; }
-
-            public void print()
-            {
-                Console.WriteLine(Id);
-                Console.WriteLine(AccountId);
-                Console.WriteLine(UserOrGroupId);
-                Console.WriteLine(AccountAccessLevel);
-                Console.WriteLine(OpportunityAccessLevel);
-                Console.WriteLine(CaseAccessLevel);
-                Console.WriteLine(ContactAccessLevel);
-                Console.WriteLine(RowCause);
-              //  Console.WriteLine(LastModifiedById);
-             //   Console.WriteLine(LastModifiedDate);
-              //  Console.WriteLine(IsDeleted);
-            }
+            public String RowCause { get; set; }    
         }
-
-
 
         public class Account
         {
@@ -253,7 +258,6 @@ namespace AccountShare
             public String OwnerId { get; set; }
             public String Type { get; set; }
             public String SAP_Account_Number__c  { get; set; }
-
         }
 
         public class User
@@ -262,11 +266,6 @@ namespace AccountShare
             public String UserName { get; set; }
             public Boolean IsActive  { get; set; }
             public String Email { get; set; }
-
         }
-
-     
-
-
     }
 }
