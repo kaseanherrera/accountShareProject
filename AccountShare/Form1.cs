@@ -26,6 +26,8 @@ namespace AccountShare
         public string AccountID;
         public string newOwnerID;
         public string accountName;
+        private string oldOwnerName;
+        private string newOwnerName;
        
         public Form1()
         {
@@ -50,32 +52,35 @@ namespace AccountShare
         {
             
             //get the account number from the account number input box
-            string accountId = AccountIdInput.Text;
+            string accountId = AccountIdInput.Text.Trim();
+
             //check if its not empty
             if(accountId.Length == 0){
                 userMessage.Text = "Must input an account ID!";
                 return;
             }
           
+            //let the user know that you are looking up the account number
             userMessage.Text = "Looking up Account Number";
+
+            //create a SF client
             var client = new ForceClient(instanceUrl, AccessToken, ApiVersion);
-            //queryfor the account in salesforce
+            
+            //query string for the account in salesforce
             string query = String.Format(@"Select Name,OwnerId , Type,SAP_Account_Number__c FROM Account WHERE Id = '{0}'",
                                                accountId);
-          
 
             try
             {
+                //run the query 
                 var results = await client.QueryAsync<Account>(query);
+                
                 //if the results is empty return with message
                 if (results.TotalSize == 0)
                 {
                     userMessage.Text = "Account number does not exist in the Salesforce!";
                     return;
                 }
-
-
-
 
                 //query for the username
                 string userNameQuery = String.Format(@"Select Username FROM User WHERE Id = '{0}' ",
@@ -90,6 +95,8 @@ namespace AccountShare
                 AccountID = accountId;
                 accountName = results.Records[0].Name;
                 
+                //set the global old owner name 
+                oldOwnerName = userNameQueryResults.Records[0].UserName;
             }
             catch(ForceException)
             {
@@ -105,34 +112,49 @@ namespace AccountShare
         private async void button5_Click(object sender, System.EventArgs e)
         {
            //get the new user ID from the input box 
-            string newUserId = newUserInput.Text;
+            string newUserId = newUserInput.Text.Trim();
+
             if (newUserId.Length == 0)
             {
                 userMessage.Text = "Must input a new user ID!";
                 return;
             }
 
+            //let the user know that you are looking for the new owner
             userMessage.Text = "Looking up the new user";
+
+            //create a SF client
             var client = new ForceClient(instanceUrl, AccessToken, ApiVersion);
-            //query the user table and make user the user exist
-            string userQuery = String.Format(@"Select Username, IsActive, Email FROM User WHERE Id = '{0}' ",
-                                 newUserId);
 
-            var results = await client.QueryAsync<User>(userQuery);
-
-            if (results.TotalSize == 0)
+            try
             {
-                userMessage.Text = "There is no user with that ID. Please try again.";
-                return;
+                //query string the user table and make user the user exist
+                string userQuery = String.Format(@"Select Username, IsActive, Email FROM User WHERE Id = '{0}' ",
+                                     newUserId);
+
+                var results = await client.QueryAsync<User>(userQuery);
+
+                //check for fail or not exist 
+                if (results.TotalSize == 0)
+                {
+                    userMessage.Text = "There is no user with that ID. Please try again.";
+                    return;
+                }
+
+                //set the username, email and title label
+                userNameLabel.Text = results.Records[0].UserName;
+                userEmailLabel.Text = results.Records[0].Email;
+                userActiveLabel.Text = results.Records[0].IsActive.ToString();
+
+                //set global Variables
+                newOwnerID = newUserId;
+                newOwnerName = results.Records[0].UserName;
+            }
+            catch (ForceException)
+            {
+                userMessage.Text = "Username Error. Please Try Again.";
             }
 
-            //set the username, email and title label
-            userNameLabel.Text = results.Records[0].UserName;
-            userEmailLabel.Text = results.Records[0].Email;
-            userActiveLabel.Text = results.Records[0].IsActive.ToString();
-            newOwnerID = newUserId;
-
-  
         }
 
         private async void button3_Click(object sender, EventArgs e)
@@ -155,8 +177,9 @@ namespace AccountShare
                 return;
             }
 
-            //update the owner
+            //let the user know that you are update the owner
             userMessage.Text = "Updating Owner!";
+            //update the owner 
             var success = await client.UpdateAsync("Account", AccountID, new { OwnerId = newOwnerID});
             //check for susscess
             if (!string.IsNullOrEmpty(success.Errors.ToString()))
@@ -169,7 +192,7 @@ namespace AccountShare
             userMessage.Text = "Successfully updated record owner";
             
             //write to the file account id - account name - owner - new owner - new owner id - records before 
-           // writeToFile(AccountID, accountName, newOwnerID);
+            writeToFile(AccountID, accountName, newOwnerID);
            
             //create account share objects from all of the ones we have saved in memory 
             userMessage.Text = "Transferring Rercords.";
@@ -196,7 +219,6 @@ namespace AccountShare
         }
 
         //write the account share information to a file on the user desktop
-        //TODO
         private void writeToFile(AccountShare share)
         {
             //path to the user desktop 
@@ -207,15 +229,7 @@ namespace AccountShare
             using (StreamWriter sw = File.AppendText(path))
             {
                 string shareString = string.Format(
-               @"ID: {0}
-                Account ID: {1}
-                User or group id: {2}
-                Account accessLevel: {3}
-                Opportunity access level: {4}
-                Case  access level: {5}
-                Contact access level: {6}
-                Row Cause{7}
-
+               @"ID: {0}{8}Account ID: {1}{8}User or group id: {2}{8}Account accessLevel: {3}{8}Opportunity access level: {4}{8}Case  access level: {5}{8}Contact access level: {6}{8}Row Cause: {7}{8}{8}
                 ", 
                                  share.Id,
                                  share.AccountId,
@@ -224,7 +238,9 @@ namespace AccountShare
                                  share.OpportunityAccessLevel,
                                  share.CaseAccessLevel,
                                  share.ContactAccessLevel,
-                                 share.RowCause);
+                                 share.RowCause,
+                                 Environment.NewLine)
+                                 ;
                //wirte the string to the file 
                 sw.WriteLine(shareString); 
                 
@@ -235,7 +251,33 @@ namespace AccountShare
         //TODO 
         private void writeToFile(string AccountID, string accountName, string newOwnerID)
         {
-            throw new NotImplementedException();
+            //path to the user desktop 
+            string path = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+            //add the file name and the correct extension 
+            path = path + @"\AccountShareLog.txt";
+
+            using (StreamWriter sw = File.AppendText(path))
+            {
+                string InfoString = string.Format(
+               @"*******************************************************************
+                Date: {0}
+                Account ID : {1}
+                Account Name: {2}
+                New Owner Name: {3}
+                Old Owner Name: {4}
+
+
+                               ",
+                                    
+                                 System.DateTime.Now,
+                                 AccountID,
+                                 AccountName,
+                                 newOwnerName,
+                                 oldOwnerName);
+                //wirte the string to the file 
+                sw.WriteLine(InfoString);
+
+            }  
         }
 
         public class AccountShare
