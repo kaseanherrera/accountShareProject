@@ -28,6 +28,8 @@ namespace AccountShare
         public string accountName;
         private string oldOwnerName;
         private string newOwnerName;
+        private bool accountVerified;
+        private bool ownerVerified;
        
        
         public Form1()
@@ -41,6 +43,8 @@ namespace AccountShare
             instanceUrl = instanceUrlInput;
             AccessToken = AccessTokenInput;
             ApiVersion = ApiVersionInput;
+            accountVerified = false;
+            ownerVerified = false;
    
             InitializeComponent();
         }
@@ -50,6 +54,7 @@ namespace AccountShare
 
         }
 
+        //verify account id
         private async void button4_Click(object sender, EventArgs e)
         {
             
@@ -99,6 +104,7 @@ namespace AccountShare
                 
                 //set the global old owner name 
                 oldOwnerName = userNameQueryResults.Records[0].UserName;
+                accountVerified = true;
             }
             catch(ForceException)
             {
@@ -111,6 +117,7 @@ namespace AccountShare
 
         }
      
+        //verify owner
         private async void button5_Click(object sender, System.EventArgs e)
         {
            //get the new user ID from the input box 
@@ -151,6 +158,7 @@ namespace AccountShare
                 //set global Variables
                 newOwnerID = newUserId;
                 newOwnerName = results.Records[0].UserName;
+                ownerVerified = true;
             }
             catch (ForceException)
             {
@@ -161,63 +169,73 @@ namespace AccountShare
 
         private async void button3_Click(object sender, EventArgs e)
         {
-            //create a client 
-            var client = new ForceClient(instanceUrl, AccessToken, ApiVersion);
-            //query for the manual types and account id match
-            string query = String.Format(@"Select Id, AccountId, UserOrGroupId, AccountAccessLevel, 
+            if (accountVerified && ownerVerified)
+            {
+                //create a client 
+                var client = new ForceClient(instanceUrl, AccessToken, ApiVersion);
+                //query for the manual types and account id match
+                string query = String.Format(@"Select Id, AccountId, UserOrGroupId, AccountAccessLevel, 
                                 OpportunityAccessLevel, CaseAccessLevel, ContactAccessLevel, RowCause, 
                                 LastModifiedDate, LastModifiedById, IsDeleted FROM AccountShare 
                             WHERE  AccountId = '{0}' 
                             AND  RowCause = 'Manual'",
-                            AccountID);
+                                AccountID);
 
-            var results = await client.QueryAsync<AccountShare>(query);
-            //if there is no account share for this account, leave
-            if (results.TotalSize == 0)
-            {
-                userMessage.Text = "There are no accountshare records for this account.";
-                return;
-            }
+                var results = await client.QueryAsync<AccountShare>(query);
+                //if there is no account share for this account, leave
+                if (results.TotalSize == 0)
+                {
+                    userMessage.Text = "There are no accountshare records for this account.";
+                    return;
+                }
 
-            //let the user know that you are update the owner
-            userMessage.Text = "Updating Owner!";
-            //update the owner 
-            var success = await client.UpdateAsync("Account", AccountID, new { OwnerId = newOwnerID});
-            //check for susscess
-            if (!string.IsNullOrEmpty(success.Errors.ToString()))
-            {
-                userMessage.Text ="Failed to update record owner";
-                return;
-            }
-            
-            //message to the user 
-            userMessage.Text = "Successfully updated record owner";
-            
-            //write to the file account id - account name - owner - new owner - new owner id - records before 
-            writeToFile(AccountID, accountName, newOwnerID);
-           
-            //create account share objects from all of the ones we have saved in memory 
-            userMessage.Text = "Transferring Rercords.";
-            foreach (AccountShare share in results.Records)
-            {
+                //let the user know that you are update the owner
+                userMessage.Text = "Updating Owner!";
+                //update the owner 
+                var success = await client.UpdateAsync("Account", AccountID, new { OwnerId = newOwnerID });
+                //check for susscess
+                if (!string.IsNullOrEmpty(success.Errors.ToString()))
+                {
+                    userMessage.Text = "Failed to update record owner";
+                    return;
+                }
 
-               // share.print();
-                var newShare = new AccountShare { 
-                AccountId = share.AccountId,
-                UserOrGroupId = share.UserOrGroupId,
-                AccountAccessLevel = share.AccountAccessLevel,
-                OpportunityAccessLevel = share.OpportunityAccessLevel,
-                CaseAccessLevel = share.CaseAccessLevel,
-                ContactAccessLevel = share.ContactAccessLevel,
-                RowCause = share.RowCause,
-               // IsDeleted = share.IsDeleted
-                };
-                writeToFile(share);
-                //newShare.print();
-                await client.CreateAsync(AccountShare.SObjectTypeName, newShare);
-               
+                //message to the user 
+                userMessage.Text = "Successfully updated record owner";
+
+                //write to the file account id - account name - owner - new owner - new owner id - records before 
+                writeToFile(AccountID, accountName, newOwnerID);
+
+                //create account share objects from all of the ones we have saved in memory 
+                userMessage.Text = "Transferring Rercords.";
+                foreach (AccountShare share in results.Records)
+                {
+
+                    // share.print();
+                    var newShare = new AccountShare
+                    {
+                        AccountId = share.AccountId,
+                        UserOrGroupId = share.UserOrGroupId,
+                        AccountAccessLevel = share.AccountAccessLevel,
+                        OpportunityAccessLevel = share.OpportunityAccessLevel,
+                        CaseAccessLevel = share.CaseAccessLevel,
+                        ContactAccessLevel = share.ContactAccessLevel,
+                        RowCause = share.RowCause,
+                        // IsDeleted = share.IsDeleted
+                    };
+                    writeToFile(share);
+                    //newShare.print();
+                    await client.CreateAsync(AccountShare.SObjectTypeName, newShare);
+
+                }
+                userMessage.Text = "Transferring Finished.";
+                accountVerified = false;
+                ownerVerified = false;
             }
-            userMessage.Text = "Transferring Finished.";
+            else
+            {
+                userMessage.Text = "Please verify account and owner";
+            }
         }
 
         //write the account share information to a file on the user desktop
