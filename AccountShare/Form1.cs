@@ -29,6 +29,7 @@ namespace AccountShare
         private string oldOwnerName;
         private string newOwnerName;
        
+       
         public Form1()
         {
             InitializeComponent();
@@ -40,6 +41,7 @@ namespace AccountShare
             instanceUrl = instanceUrlInput;
             AccessToken = AccessTokenInput;
             ApiVersion = ApiVersionInput;
+   
             InitializeComponent();
         }
 
