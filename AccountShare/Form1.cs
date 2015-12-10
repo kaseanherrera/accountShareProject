@@ -212,6 +212,7 @@ namespace AccountShare
             }  
         }
         //write the account and user information to a file 
+        
         private void writeToFile(string AccountID, string accountName, string newOwnerID)
         {
             //path to the user desktop 
@@ -234,7 +235,7 @@ namespace AccountShare
                                     
                                  System.DateTime.Now,
                                  AccountID,
-                                 AccountName,
+                                 accountName,
                                  newOwnerName,
                                  oldOwnerName);
                 //wirte the string to the file 
@@ -242,6 +243,7 @@ namespace AccountShare
 
             }  
         }
+
         //sets the global account variable and checks its length > 0 
         private void checkAccountString()
         {
