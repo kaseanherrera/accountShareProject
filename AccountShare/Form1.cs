@@ -267,6 +267,16 @@ namespace AccountShare
                 return;
             }
         }
+
+
+        // <---back button 
+        private void button2_Click(object sender, EventArgs e)
+        {
+            //create a new form for login 
+            this.Hide();
+            new Login().ShowDialog();
+        }
+
         //account share object 
         public class AccountShare
         {
@@ -297,5 +307,7 @@ namespace AccountShare
             public Boolean IsActive  { get; set; }
             public String Email { get; set; }
         }
+
+      
     }
 }
