@@ -85,7 +85,8 @@ namespace AccountShare
 
         private bool login(string username, string password)
         {
-  
+            loginButton.Enabled = false;
+            Cursor.Current = Cursors.WaitCursor;
             // Create a service object
             binding = new SforceService();
             // Timeout after a minute
@@ -108,19 +109,25 @@ namespace AccountShare
                 // Write the stack trace to the console
                 Console.WriteLine(e.StackTrace);
                 // Return False to indicate that the login was not successful
+                loginButton.Enabled = true;
+                Cursor.Current = Cursors.Default;
                 return false;
             }
             // Check if the password has expired
             if (lr.passwordExpired)
             {
                 Console.WriteLine("An error has occurred. Your password has expired.");
+                loginButton.Enabled = true;
+                Cursor.Current = Cursors.Default;
                 return false;
             }
            
             AccessToken = lr.sessionId;
             String url = Regex.Split(lr.serverUrl, @"/services")[0];
             instanceUrl = url;
-           
+
+            loginButton.Enabled = true;
+            Cursor.Current = Cursors.Default;
             return true;
         }
 
