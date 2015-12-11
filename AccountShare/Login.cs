@@ -45,7 +45,7 @@ namespace AccountShare
                 }
 
                 label4.Text = "Verifying salesforce username and password.";
-                bool gotIn = login(userName.Text, password.Text);
+                bool gotIn = login(userName.Text, password.Text, Production.Checked);
                
 
                 if (gotIn) {
@@ -83,12 +83,12 @@ namespace AccountShare
 
         }
 
-        private bool login(string username, string password)
+        private bool login(string username, string password, Boolean production)
         {
             loginButton.Enabled = false;
             Cursor.Current = Cursors.WaitCursor;
             // Create a service object
-            binding = new SforceService();
+            binding = new SforceService(production);
             // Timeout after a minute
             binding.Timeout = 60000;
             // Try logging in
