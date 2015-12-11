@@ -141,13 +141,21 @@ namespace AccountShare
                 //let the user know that you are update the owner
                 userMessage.Text = "Updating Owner!";
                 //update the owner 
-                var success = await client.UpdateAsync("Account", accountId, new { OwnerId = newOwnerID });
-                //check for susscess
-                if (!string.IsNullOrEmpty(success.Errors.ToString()))
+                try
+                {
+                    var success = await client.UpdateAsync("Account", accountId, new { OwnerId = newOwnerID });
+                    //check for susscess
+                    if (!string.IsNullOrEmpty(success.Errors.ToString()))
+                    {
+                        userMessage.Text = "Failed to update record owner";
+                        return;
+                    }
+                }
+                catch (Exception a)
                 {
                     userMessage.Text = "Failed to update record owner";
-                    return;
                 }
+              
                 //Finsihed update
                 userMessage.Text = "Successfully updated record owner";
                 //write to the file account id - account name - owner - new owner - new owner id - records before 
