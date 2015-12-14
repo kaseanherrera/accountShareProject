@@ -130,14 +130,6 @@ namespace AccountShare
             {
                 //create a client 
                 var client = new ForceClient(instanceUrl, AccessToken, ApiVersion);
-                //query string for manual account shares with matching id
-                string query = String.Format(@"Select Id, AccountId, UserOrGroupId, AccountAccessLevel, 
-                    OpportunityAccessLevel, CaseAccessLevel, ContactAccessLevel, RowCause, 
-                    LastModifiedDate, LastModifiedById, IsDeleted FROM AccountShare 
-                    WHERE  AccountId = '{0}' 
-                    AND  RowCause = 'Manual'", accountId);
-                //run query
-                var results = await client.QueryAsync<AccountShare>(query);
                 //let the user know that you are update the owner
                 userMessage.Text = "Updating Owner!";
                 //update the owner 
@@ -155,11 +147,19 @@ namespace AccountShare
                 {
                     userMessage.Text = "Failed to update record owner";
                 }
-              
                 //Finsihed update
                 userMessage.Text = "Successfully updated record owner";
                 //write to the file account id - account name - owner - new owner - new owner id - records before 
                 writeToFile(accountId, accountName, newOwnerID);
+
+                //query string for manual account shares with matching id
+                string query = String.Format(@"Select Id, AccountId, UserOrGroupId, AccountAccessLevel, 
+                    OpportunityAccessLevel, CaseAccessLevel, ContactAccessLevel, RowCause, 
+                    LastModifiedDate, LastModifiedById, IsDeleted FROM AccountShare 
+                    WHERE  AccountId = '{0}' 
+                    AND  RowCause = 'Manual'", accountId);
+                //run query
+                var results = await client.QueryAsync<AccountShare>(query);
                 //create account share objects from all of the ones we have saved in memory 
                 userMessage.Text = "Transferring Rercords.";
                 foreach (AccountShare share in results.Records)

@@ -46,6 +46,7 @@ namespace AccountShare
 
                 label4.Text = "Verifying salesforce username and password.";
                 bool gotIn = login(userName.Text, password.Text, Production.Checked);
+                Console.WriteLine("---------------->" + Production.Checked);
                
 
                 if (gotIn) {
